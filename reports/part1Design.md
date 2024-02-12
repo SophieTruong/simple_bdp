@@ -7,7 +7,10 @@
         + Quite constant data without too much changes or updates. Updates and changes happens on at most in a yearly basis
         + Tenant get data from source by downloading them from the page??? and use our API transfer the data to our platform
     - Under which situations/assumptions that the platform serves for big data workload 
-        + ??? 
+        + Each location producr around 70MB of data and we have around 550 locations. Whenever we have new data, the overall data size for all location combines is around 140 GB
+        + The data is updated quarterly, or every 3 months 
+        + We have multiple tenants, each might stores data from the same country, of multiple countries. Each tenants use the database for display dashboards 
+        
 2. ... 
 
     - ![title](Images/simple_bdp.jpg)
