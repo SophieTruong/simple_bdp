@@ -1,2 +1,7 @@
 venv
 __pycache__
+.DS_store
+.dockerignore
+test*
+data_temp
+data_processed
