@@ -5,3 +5,7 @@ __pycache__
 test*
 data_temp
 data_processed
+nifi
+config
+nifi_registry
+cockroach-data
