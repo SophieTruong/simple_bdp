@@ -85,20 +85,62 @@ services:
         # uncomment the next line after copying the /conf directory from the container to your local directory to persist NiFi flows
         - ./nifi/conf:/opt/nifi/nifi-current/conf
     networks:
-        - my_persistent_network
-  
+      - my_persistent_network
+          
   # corkroachdb for data storage
-  crdb:
+  crdb1:
     image: cockroachdb/cockroach:latest-v22.2
     container_name: crdb-1
     ports:
         - "26257:26257"
         - "8085:8085"
-    command: start-single-node --insecure
+    command: start --insecure --join=roach1,roach2,roach3
     volumes:
-        - "${PWD}/cockroach-data/crdb:/cockroach/cockroach-data"
+        - "${PWD}/cockroach-data/crdb1:/cockroach/cockroach-data"
+    networks:
+        my_persistent_network:
+          ipv4_address: 172.18.0.4
+  
+  crdb2:
+    image: cockroachdb/cockroach:latest-v22.2
+    container_name: crdb-1
+    ports:
+        - "26257:26257"
+        - "8085:8085"
+    command: start --insecure --join=roach1,roach2,roach3
+    volumes:
+        - "${PWD}/cockroach-data/crdb2:/cockroach/cockroach-data"
+    networks:
+        my_persistent_network:
+          ipv4_address: 172.18.0.4
+  crdb3:
+    image: cockroachdb/cockroach:latest-v22.2
+    container_name: crdb-1
+    ports:
+        - "26257:26257"
+        - "8085:8085"
+    command: start --insecure --join=roach1,roach2,roach3
+    volumes:
+        - "${PWD}/cockroach-data/crdb3:/cockroach/cockroach-data"
+    networks:
+        my_persistent_network:
+          ipv4_address: 172.18.0.4
+      
+  
+  # Init DB
+  crdb-init:
+    image: cockroachdb/cockroach:latest-v22.2
+    entrypoint: "/bin/bash"
+    command: /setup_db.sh
+    volumes:
+        - ./code/cockroachdb:/cockroach
     networks:
         - my_persistent_network
+  
 networks:
   my_persistent_network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.4/16 # Assign a static IP address to hardcode DB connection in Nifi and python
+          gateway: 172.18.0.1
