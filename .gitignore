@@ -9,3 +9,4 @@ nifi
 config
 nifi_registry
 cockroach-data
+logs
