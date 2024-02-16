@@ -43,9 +43,19 @@ def process_review_data(review_df: pd.DataFrame, tenant_id: str, user_id: str) -
     if not matched_schema: 
         return
     
-    review_df = review_df.rename(columns={'id': 'review_id'})
     corrected_review_shema = ['listing_id', 'review_id', 'date', 'reviewer_id', 'reviewer_name', 'comments']
-    review_df[corrected_review_shema].to_parquet(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_reviews.parquet')
+    review_df = review_df.rename(columns={'id': 'review_id'})
+    review_df = review_df[corrected_review_shema]
+    review_df = review_df.astype({
+        'listing_id': 'int64', 
+        'review_id': 'int64', 
+        'reviewer_id':'int64', 
+        'reviewer_name': str, 
+        'comments': str
+        })
+    review_df['date'] = pd.to_datetime(review_df['date'])     
+      
+    review_df.to_csv(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_reviews.csv')
 
 def process_calendar_price_data(calendar_df: pd.DataFrame, tenant_id: str, user_id: str) -> None:
     """
@@ -59,8 +69,18 @@ def process_calendar_price_data(calendar_df: pd.DataFrame, tenant_id: str, user_
     if not matched_schema: 
         return
     
-    calendar_df['price'] = calendar_df.price.replace('[\$,]','', regex=True).astype(float)    
-    calendar_df[price_schema].to_parquet(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_calendar.parquet')
+    calendar_df= calendar_df[price_schema]
+    calendar_df = calendar_df.astype({
+        'listing_id': 'int64',
+        'available': bool,
+        'adjusted_price': 'float32',
+        'minimum_nights': 'int32',
+        'maximum_nights': 'int32'
+        })
+    calendar_df['date'] = pd.to_datetime(calendar_df['date'])        
+        
+    calendar_df['price'] = calendar_df.price.replace('[\$,]','', regex=True).astype(float) 
+    calendar_df.to_csv(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_calendar.csv')
    
 def process_neighborhood_data(neighborhood_df: pd.DataFrame, tenant_id: str, user_id: str) -> None:
     """
@@ -71,7 +91,7 @@ def process_neighborhood_data(neighborhood_df: pd.DataFrame, tenant_id: str, use
     matched_schema = all(c in neighborhood_columns for c in neighborhood_schema)
     if not matched_schema: 
         return
-    neighborhood_df[neighborhood_schema].to_parquet(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_neighborhood.parquet')
+    neighborhood_df[neighborhood_schema].to_csv(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_neighbourhood.csv')
 
 def process_listing_data(listing_df: pd.DataFrame, tenant_id: str, user_id: str) -> None:
     """
@@ -85,21 +105,11 @@ def process_listing_data(listing_df: pd.DataFrame, tenant_id: str, user_id: str)
                                               'amenities' # reduce the complexity because this column has Json type
                                               ])
         new_column_names = {"id": "listing_id", 
-                                    "neighbourhood_cleansed": "neighbourhood", 
-                                    "neighbourhood_group_cleansed": "neighbourhood_group"}
+                            "neighbourhood_cleansed": "neighbourhood", 
+                            "neighbourhood_group_cleansed": "neighbourhood_group"}
         listing_df = listing_df.rename(columns=new_column_names)
-        listing_df['price'] = listing_df.price.replace('[\$,]','', regex=True).astype(float)
         
         # Split table into sub tables
-        listing_schema = [
-        'listing_id', 'listing_url', 'name', 'description', 
-        'neighbourhood', 'neighbourhood_group', 'neighborhood_overview', 
-        'picture_url', 'host_id',  'latitude',
-        'longitude', 'property_type', 'room_type', 'accommodates', 'bathrooms',
-        'bathrooms_text', 'bedrooms', 'beds', 'price', 'minimum_nights', 
-        'maximum_nights', 'has_availability',  'license', 'instant_bookable',
-        'scrape_id'
-        ]
         host_schema = [
         'host_id', 'host_url', 'host_name', 'host_since', 'host_location', 'host_about',
         'host_response_time', 'host_response_rate', 'host_acceptance_rate',
@@ -108,26 +118,54 @@ def process_listing_data(listing_df: pd.DataFrame, tenant_id: str, user_id: str)
         'host_total_listings_count', 'host_verifications',
         'host_has_profile_pic', 'host_identity_verified'
         ]
-        listing_review_schema = [
-        'listing_id', 'number_of_reviews',
-        'number_of_reviews_ltm', 'number_of_reviews_l30d', 'first_review',
-        'last_review', 'review_scores_rating', 'review_scores_accuracy',
-        'review_scores_cleanliness', 'review_scores_checkin',
-        'review_scores_communication', 'review_scores_location',
-        'review_scores_value', 'reviews_per_month'
-        ]
-        scrape_schema = ['scrape_id', 'last_scraped', 'source']
+                
+        host_df = listing_df[host_schema].drop_duplicates(subset=['host_id'])
+        host_df['host_response_rate'] = host_df['host_response_rate'].replace('[%]','', regex=True).astype(float)
+        host_df['host_acceptance_rate'] = host_df['host_acceptance_rate'].replace('[%]','', regex=True).astype(float)
+        host_df = host_df.astype({
+        'host_id': 'int64', 
+        'host_url': str, 
+        'host_name': str, 
+        'host_location': str, 
+        'host_about': str,
+        'host_response_time': str, 
+        'host_response_rate': 'float32', 
+        'host_acceptance_rate': 'float32',
+        'host_is_superhost': bool, 
+        'host_thumbnail_url': str, 
+        'host_picture_url': str,
+        'host_neighbourhood': str, 
+        'host_listings_count': 'int32',
+        'host_total_listings_count': 'int32', 
+        'host_verifications': str,
+        'host_has_profile_pic': bool,
+        'host_identity_verified': bool
+        })
+        host_df['host_since'] = pd.to_datetime(host_df['host_since'])   
         
-        scrape_df = listing_df[scrape_schema].drop_duplicates().reset_index(drop=True)
-        listing_review_df = listing_df[listing_review_schema].drop_duplicates().reset_index(drop=True)
-        host_df = listing_df[host_schema].drop_duplicates(subset=['host_id']).reset_index(drop=True)
-        listing_df = listing_df[listing_schema].reset_index(drop=True)
+        listing_df = listing_df.drop(columns=host_schema[1:])
+        listing_df = listing_df.astype({
+        'listing_id': 'int64', 'listing_url': str, 'name': str, 'description': str, 
+        'neighbourhood': str, 'neighbourhood_group': str, 'neighborhood_overview': str, 
+        'picture_url': str, 'host_id': 'int64',  'latitude': 'float32', 'longitude': 'float32', 
+        'property_type': str, 'room_type': str, 'accommodates': 'float32', 'bathrooms':'float32',
+        'bathrooms_text': str, 'bedrooms': 'float32', 'beds': 'float32',
+        'minimum_nights': 'float32', 'maximum_nights': 'float32', 'has_availability': bool,  
+        'license': str, 'instant_bookable': bool,
+        'number_of_reviews': 'int32', 'number_of_reviews_ltm': 'int32', 'number_of_reviews_l30d': 'int32',
+        'review_scores_rating': 'float32', 'review_scores_accuracy': 'float32',
+        'review_scores_cleanliness': 'float32', 'review_scores_checkin': 'float32',
+        'review_scores_communication': 'float32', 'review_scores_location': 'float32',
+        'review_scores_value': 'float32', 'reviews_per_month': 'float32',
+        'scrape_id': 'int64', 'source': str
+        })
+        listing_df['first_review'] = pd.to_datetime(listing_df['first_review'])
+        listing_df['last_review'] = pd.to_datetime(listing_df['last_review'])
+        listing_df['last_scraped'] = pd.to_datetime(listing_df['last_scraped'])  
+        listing_df['price'] = listing_df.price.replace('[\$,]','', regex=True).astype(float)
         
-        # Save df to corresponding DB tables: 
-        scrape_df.to_parquet(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_scrape.parquet')
-        listing_review_df.to_parquet(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_listing-review.parquet')
-        host_df.to_parquet(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_host.parquet')
-        listing_df.to_parquet(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_listing.parquet')
+        host_df.to_csv(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_host.csv', index=False)
+        listing_df.to_csv(f'{OUTPUT_PATH}/T-{tenant_id}_UID-{user_id}_listing.csv', index=False)
 
 def input_data_split(input_file: str) -> None:    
     if not os.path.exists(INPUT_PATH):

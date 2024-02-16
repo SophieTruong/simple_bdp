@@ -43,6 +43,9 @@ def upload_file():
             
             # TODO: move input data processing out of API
             input_data_split(filename)
+            # Once data is processed, the raw data is deleted
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            
             return filename + " is successfully uploaded"
         return "Only .txt, .csv, .gz, and .geojson files are allowed"
     
