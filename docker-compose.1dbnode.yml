@@ -98,20 +98,10 @@ services:
     volumes:
         - "${PWD}/cockroach-data/crdb:/cockroach/cockroach-data"
         - ./code/cockroachdb/airbnb_db.sql:/cockroach/airbnb_db.sql
+        - ./code/cockroachdb/setup_db.sh:/cockroach/setup_db.sh
     networks:
         my_persistent_network:
           ipv4_address: 172.18.0.4
-  
-  # Init DB
-  crdb-init:
-    image: cockroachdb/cockroach:latest-v22.2
-    entrypoint: "/bin/bash"
-    command: /setup_db.sh
-    volumes:
-        - ./code/cockroachdb:/cockroach
-    networks:
-        - my_persistent_network
-  
 networks:
   my_persistent_network:
     driver: bridge

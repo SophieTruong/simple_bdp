@@ -2,7 +2,7 @@ SET sql_safe_updates = FALSE;
 
 DROP DATABASE IF EXISTS airbnb_test CASCADE;
 
--- USE default;
+USE default;
 -- DROP DATABASE airbnb_test CASCADE;
 
 CREATE DATABASE IF NOT EXISTS airbnb_test;
