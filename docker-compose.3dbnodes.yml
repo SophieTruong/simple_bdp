@@ -91,56 +91,52 @@ services:
   crdb1:
     image: cockroachdb/cockroach:latest-v22.2
     container_name: crdb-1
+    hostname: crdb1
     ports:
         - "26257:26257"
         - "8085:8085"
-    command: start --insecure --join=roach1,roach2,roach3
+    command: start --insecure --join=crdb1:26357,crdb2:26357,crdb3:26357 --http-addr crdb1:8085 --advertise-addr crdb1:26357 --listen-addr crdb1:26357 --sql-addr crdb1:26257
     volumes:
-        - "${PWD}/cockroach-data/crdb1:/cockroach/cockroach-data"
+        - "${PWD}/cockroach-data/crdb:/cockroach/cockroach-data"
+        - ./code/cockroachdb/airbnb_db.sql:/cockroach/airbnb_db.sql
+        - ./code/cockroachdb/setup_db.sh:/cockroach/setup_db.sh
     networks:
-        my_persistent_network:
-          ipv4_address: 172.18.0.4
-  
+      - my_persistent_network
   crdb2:
     image: cockroachdb/cockroach:latest-v22.2
-    container_name: crdb-1
+    container_name: crdb-2
+    hostname: crdb2
     ports:
-        - "26257:26257"
-        - "8085:8085"
-    command: start --insecure --join=roach1,roach2,roach3
+        - "26258:26258"
+        - "8086:8086"
+    command: start --insecure --join=crdb1:26357,crdb2:26357,crdb3:26357 --http-addr crdb2:8086 --advertise-addr crdb2:26357 --listen-addr crdb2:26357 --sql-addr crdb2:26258
     volumes:
         - "${PWD}/cockroach-data/crdb2:/cockroach/cockroach-data"
     networks:
-        my_persistent_network:
-          ipv4_address: 172.18.0.4
+      - my_persistent_network
   crdb3:
     image: cockroachdb/cockroach:latest-v22.2
-    container_name: crdb-1
+    container_name: crdb-3
+    hostname: crdb3
     ports:
-        - "26257:26257"
-        - "8085:8085"
-    command: start --insecure --join=roach1,roach2,roach3
+        - "26259:26259"
+        - "8087:8087"
+    command: start --insecure --join=crdb1:26357,crdb2:26357,crdb3:26357 --http-addr crdb3:8087 --advertise-addr crdb3:26357 --listen-addr crdb3:26357 --sql-addr crdb3:26259
     volumes:
         - "${PWD}/cockroach-data/crdb3:/cockroach/cockroach-data"
     networks:
-        my_persistent_network:
-          ipv4_address: 172.18.0.4
-      
-  
-  # Init DB
-  crdb-init:
-    image: cockroachdb/cockroach:latest-v22.2
-    entrypoint: "/bin/bash"
-    command: /setup_db.sh
-    volumes:
-        - ./code/cockroachdb:/cockroach
-    networks:
-        - my_persistent_network
+      - my_persistent_network
+  init:
+    container_name: init
+    image:  cockroachdb/cockroach:latest-v22.2
+    command: init --insecure
+    depends_on:
+      - crdb1
   
 networks:
   my_persistent_network:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.18.0.4/16 # Assign a static IP address to hardcode DB connection in Nifi and python
+        - subnet: 172.18.0.0/16 # Assign a static IP address to hardcode DB connection in Nifi and python
           gateway: 172.18.0.1
